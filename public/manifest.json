@@ -1,5 +1,6 @@
 {
   "name": "Coincidimos",
+  "id": "/",
   "short_name": "Coincidimos",
   "description": "Coordiná juntadas con tus amigos",
   "start_url": "/",
