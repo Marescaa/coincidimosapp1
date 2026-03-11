@@ -1,13 +1,16 @@
 {
-  "name": "Coincidimos",
   "id": "/",
+  "name": "Coincidimos",
   "short_name": "Coincidimos",
   "description": "Coordiná juntadas con tus amigos",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0C0C0F",
   "theme_color": "#34D399",
-  "orientation": "portrait",
+  "lang": "es",
+  "categories": ["social", "lifestyle"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -20,6 +23,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "narrow"
     }
   ]
 }
