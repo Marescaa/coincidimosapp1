@@ -27,6 +27,8 @@ export default function Dashboard() {
   const [confirmandoSalir, setConfirmandoSalir] = useState(null);
   const [solicitudesPendientes, setSolicitudesPendientes] = useState(0);
   const [invitaciones, setInvitaciones] = useState([]);
+  const [cantidadAmigos, setCantidadAmigos] = useState(0);
+  const [creando, setCreando] = useState(false);
 
   const cargar = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -34,12 +36,20 @@ export default function Dashboard() {
     const { data: p } = await supabase.from("perfiles").select("*").eq("id", user.id).single();
     setPerfil({ ...p, id: user.id });
 
-    // Solicitudes de amistad pendientes
+    // Amigos reales (de la tabla amistades)
+    const { data: amistades } = await supabase
+      .from("amistades")
+      .select("id")
+      .eq("estado", "aceptada")
+      .or(`de_id.eq.${user.id},para_id.eq.${user.id}`);
+    setCantidadAmigos(amistades?.length || 0);
+
+    // Solicitudes pendientes
     const { data: solicitudes } = await supabase
       .from("amistades").select("id").eq("para_id", user.id).eq("estado", "pendiente");
     setSolicitudesPendientes(solicitudes?.length || 0);
 
-    // Invitaciones a grupos pendientes
+    // Invitaciones a grupos
     const { data: invs } = await supabase
       .from("invitaciones").select("*").eq("para_id", user.id).eq("estado", "pendiente");
     if (invs?.length > 0) {
@@ -58,7 +68,7 @@ export default function Dashboard() {
 
     const { data: miembros } = await supabase.from("miembros").select("grupo_id").eq("user_id", user.id);
     if (!miembros?.length) { setCargando(false); return; }
-    const grupoIds = miembros.map(m => m.grupo_id);
+    const grupoIds = [...new Set(miembros.map(m => m.grupo_id))]; // dedup
     const { data: gruposData } = await supabase.from("grupos").select("*").in("id", grupoIds);
     const gruposConInfo = await Promise.all((gruposData || []).map(async g => {
       const { data: juntadas } = await supabase.from("juntadas").select("*").eq("grupo_id", g.id).order("fecha", { ascending: false });
@@ -73,7 +83,8 @@ export default function Dashboard() {
   useEffect(() => { cargar(); }, []);
 
   const crearGrupo = async () => {
-    if (!nombreGrupo.trim()) return;
+    if (!nombreGrupo.trim() || creando) return;
+    setCreando(true);
     const { data: { user } } = await supabase.auth.getUser();
     const codigo = Math.random().toString(36).substring(2, 8).toUpperCase();
     const { data: grupo } = await supabase.from("grupos").insert({ nombre: nombreGrupo, codigo, creado_por: user.id }).select().single();
@@ -86,6 +97,12 @@ export default function Dashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: grupo } = await supabase.from("grupos").select("*").eq("codigo", codigoUnirse.toUpperCase()).single();
     if (!grupo) return alert("Codigo invalido");
+    // Verificar si ya es miembro
+    const { data: yaEsMiembro } = await supabase.from("miembros").select("id").eq("grupo_id", grupo.id).eq("user_id", user.id).maybeSingle();
+    if (yaEsMiembro) {
+      router.push(`/grupo/${grupo.id}?miembro=${perfil.nombre}`);
+      return;
+    }
     await supabase.from("miembros").insert({ grupo_id: grupo.id, nombre: perfil.nombre, user_id: user.id });
     router.push(`/grupo/${grupo.id}?miembro=${perfil.nombre}`);
   };
@@ -101,7 +118,10 @@ export default function Dashboard() {
     await supabase.from("invitaciones").update({ estado: aceptar ? "aceptada" : "rechazada" }).eq("id", inv.id);
     if (aceptar) {
       const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("miembros").insert({ grupo_id: inv.grupo_id, nombre: perfil.nombre, user_id: user.id });
+      const { data: yaEsMiembro } = await supabase.from("miembros").select("id").eq("grupo_id", inv.grupo_id).eq("user_id", user.id).maybeSingle();
+      if (!yaEsMiembro) {
+        await supabase.from("miembros").insert({ grupo_id: inv.grupo_id, nombre: perfil.nombre, user_id: user.id });
+      }
     }
     await cargar();
   };
@@ -135,9 +155,7 @@ export default function Dashboard() {
       {/* Top bar */}
       <div style={{ borderBottom: "1px solid var(--border)", padding: "0 24px" }}>
         <div style={{ maxWidth: "560px", margin: "0 auto", height: "60px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <Brand size="md" />
-          </div>
+          <Brand size="md" />
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <button onClick={() => router.push("/amigos")} style={{ position: "relative", fontSize: "12px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "5px 14px", borderRadius: "8px", cursor: "pointer", fontWeight: 600 }}>
               Amigos
@@ -154,7 +172,6 @@ export default function Dashboard() {
 
       <div style={{ maxWidth: "560px", margin: "0 auto", padding: "32px 20px" }}>
 
-        {/* Perfil */}
         <div className="fade-up s0" style={{ marginBottom: "28px" }}>
           <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "22px", fontWeight: 800, color: "var(--text)", marginBottom: "2px" }}>
             Hola, {perfil.nombre} 👋
@@ -162,7 +179,7 @@ export default function Dashboard() {
           <p style={{ fontSize: "13px", color: "var(--accent)", fontWeight: 600 }}>@{perfil.usuario}</p>
         </div>
 
-        {/* Invitaciones pendientes */}
+        {/* Invitaciones */}
         {invitaciones.length > 0 && (
           <div className="fade-up s0" style={{ marginBottom: "24px" }}>
             <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "12px" }}>
@@ -171,29 +188,13 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {invitaciones.map(inv => (
                 <div key={inv.id} style={{ background: "rgba(52,211,153,0.05)", border: "1px solid rgba(52,211,153,0.15)", borderRadius: "14px", padding: "16px 18px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ marginBottom: "12px" }}>
-                      <p style={{ fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "3px" }}>
-                        {inv.grupo?.nombre}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-                        Invitado por <span style={{ color: "var(--accent)", fontWeight: 600 }}>@{inv.de?.usuario}</span>
-                      </p>
-                    </div>
+                  <div style={{ marginBottom: "12px" }}>
+                    <p style={{ fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "3px" }}>{inv.grupo?.nombre}</p>
+                    <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>Invitado por <span style={{ color: "var(--accent)", fontWeight: 600 }}>@{inv.de?.usuario}</span></p>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
-                    <button
-                      onClick={() => responderInvitacion(inv, false)}
-                      style={{ flex: 1, padding: "9px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: "10px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}
-                    >
-                      Rechazar
-                    </button>
-                    <button
-                      onClick={() => responderInvitacion(inv, true)}
-                      style={{ flex: 2, padding: "9px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "10px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}
-                    >
-                      Unirme al grupo →
-                    </button>
+                    <button onClick={() => responderInvitacion(inv, false)} style={{ flex: 1, padding: "9px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: "10px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>Rechazar</button>
+                    <button onClick={() => responderInvitacion(inv, true)} style={{ flex: 2, padding: "9px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "10px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>Unirme →</button>
                   </div>
                 </div>
               ))}
@@ -207,7 +208,7 @@ export default function Dashboard() {
             {[
               { label: "Grupos", value: grupos.length },
               { label: "Juntadas", value: totalJuntadas },
-              { label: "Amigos", value: [...new Set(grupos.flatMap(g => g.miembros.map(m => m.nombre)))].length },
+              { label: "Amigos", value: cantidadAmigos },
             ].map(s => (
               <div key={s.label} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "14px", padding: "16px", textAlign: "center" }}>
                 <p style={{ fontFamily: "Syne, sans-serif", fontSize: "24px", fontWeight: 800, color: "var(--text)", marginBottom: "2px" }}>{s.value}</p>
@@ -242,7 +243,7 @@ export default function Dashboard() {
                 style={inputStyle}
                 autoFocus
               />
-              <button onClick={modo === "crear" ? crearGrupo : unirseGrupo} style={{ padding: "12px 20px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <button onClick={modo === "crear" ? crearGrupo : unirseGrupo} disabled={creando} style={{ padding: "12px 20px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", opacity: creando ? 0.6 : 1 }}>
                 {modo === "crear" ? "Crear →" : "Entrar →"}
               </button>
             </div>
@@ -290,19 +291,15 @@ export default function Dashboard() {
                       </button>
                     </div>
                   </div>
-
                   <div onClick={() => router.push(`/grupo/${g.id}?miembro=${perfil.nombre}`)} style={{ marginBottom: g.ultimaNotif ? "12px" : "0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                       <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--accent)" }}>{nivel.nombre}</span>
-                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-                        {g.juntadas.length} juntadas{siguiente ? ` · faltan ${siguiente.min - g.juntadas.length}` : ""}
-                      </span>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{g.juntadas.length} juntadas{siguiente ? ` · faltan ${siguiente.min - g.juntadas.length}` : ""}</span>
                     </div>
                     <div style={{ height: "3px", background: "var(--surface-2)", borderRadius: "4px", overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${progreso}%`, background: "var(--accent)", borderRadius: "4px" }} />
                     </div>
                   </div>
-
                   {g.ultimaNotif && (
                     <p onClick={() => router.push(`/grupo/${g.id}?miembro=${perfil.nombre}`)} style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "10px", paddingTop: "10px", borderTop: "1px solid var(--border)" }}>
                       💬 {g.ultimaNotif.texto}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter, useSearchParams } from "next/navigation";
 import Brand from "@/app/components/Brand";
@@ -12,8 +12,28 @@ function LoginContenido() {
   const [nombre, setNombre] = useState("");
   const [usuario, setUsuario] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [verificando, setVerificando] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  // Si ya hay sesión activa, ir directo al dashboard
+  useEffect(() => {
+    const verificarSesion = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          await supabase.auth.signOut();
+          setVerificando(false);
+          return;
+        }
+        router.replace("/dashboard");
+      } catch (e) {
+        await supabase.auth.signOut();
+        setVerificando(false);
+      }
+    };
+    verificarSesion();
+  }, []);
 
   const inputStyle = {
     width: "100%", padding: "13px 16px",
@@ -34,10 +54,8 @@ function LoginContenido() {
     setCargando(true);
 
     if (modo === "registro") {
-      // Verificar que el usuario no exista
       const { data: existente } = await supabase.from("perfiles").select("id").eq("usuario", usuario).maybeSingle();
       if (existente) { setError("Ese usuario ya esta en uso"); setCargando(false); return; }
-
       await supabase.auth.signOut();
       const { data, error: err } = await supabase.auth.signUp({ email, password });
       if (err) { setError(err.message); setCargando(false); return; }
@@ -50,11 +68,13 @@ function LoginContenido() {
     }
   };
 
+  if (verificando) return null;
+
   return (
     <div style={{ width: "100%", maxWidth: "420px", position: "relative", zIndex: 1 }}>
       <div className="fade-up s0" style={{ textAlign: "center", marginBottom: "40px" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-          <Brand size="md" />
+          <Brand size="lg" />
         </div>
         <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
           {modo === "login" ? "Bienvenido de nuevo" : "Crea tu cuenta gratis"}
@@ -82,13 +102,7 @@ function LoginContenido() {
                 <label style={labelStyle}>Nombre de usuario</label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--accent)", fontWeight: 700, fontSize: "14px" }}>@</span>
-                  <input
-                    type="text"
-                    placeholder="tuusuario"
-                    value={usuario}
-                    onChange={e => setUsuario(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                    style={{ ...inputStyle, paddingLeft: "32px" }}
-                  />
+                  <input type="text" placeholder="tuusuario" value={usuario} onChange={e => setUsuario(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))} style={{ ...inputStyle, paddingLeft: "32px" }} />
                 </div>
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>Solo letras minusculas, numeros y _</p>
               </div>
@@ -105,11 +119,8 @@ function LoginContenido() {
 
           {error && <p style={{ fontSize: "13px", color: "#F87171", textAlign: "center" }}>{error}</p>}
 
-          <button
-            onClick={handleSubmit}
-            disabled={cargando}
-            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1, transition: "opacity 0.2s", marginTop: "4px" }}
-          >
+          <button onClick={handleSubmit} disabled={cargando}
+            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1, transition: "opacity 0.2s", marginTop: "4px" }}>
             {cargando ? "Cargando..." : modo === "login" ? "Entrar →" : "Crear cuenta →"}
           </button>
         </div>

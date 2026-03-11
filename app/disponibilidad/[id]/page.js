@@ -1,13 +1,12 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Loader from "@/app/components/Loader";
 
-// Horas de 7am a 6am (madrugada)
 const HORAS = [7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5,6];
 
-const DIAS = Array.from({ length: 7 }, (_, i) => {
+const DIAS = Array.from({ length: 14 }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() + i);
   return d;
@@ -31,24 +30,23 @@ function nombreDia(date) {
   const hoy = new Date();
   const manana = new Date();
   manana.setDate(hoy.getDate() + 1);
-  if (formatFecha(date) === formatFecha(hoy)) return "Hoy";
-  if (formatFecha(date) === formatFecha(manana)) return "Mañ";
-  return date.toLocaleDateString("es-AR", { weekday: "short", day: "numeric" });
+  if (formatFecha(date) === formatFecha(hoy)) return { top: "Hoy", bot: "" };
+  if (formatFecha(date) === formatFecha(manana)) return { top: "Mañ", bot: "" };
+  const top = date.toLocaleDateString("es-AR", { weekday: "short" });
+  const bot = date.getDate();
+  return { top, bot };
 }
 
 function esHoy(date) {
   return formatFecha(date) === formatFecha(new Date());
 }
 
-// Convierte (fecha visual del día, hora) → (fecha DB, hora string)
-// Las horas 0-6 se guardan en el día siguiente
 function toDb(fechaVisual, hora) {
   const esMadrugada = hora <= 6;
   const dbFecha = esMadrugada ? addDias(fechaVisual, 1) : fechaVisual;
   return { dbFecha, dbHora: `${String(hora).padStart(2, "0")}:00` };
 }
 
-// Convierte (dbFecha, horaStr) → (fechaVisual, hora)
 function fromDb(dbFecha, horaStr) {
   const h = parseInt(horaStr.split(":")[0]);
   const esMadrugada = h <= 6;
@@ -68,13 +66,11 @@ function DisponibilidadContenido() {
   const [arrastrando, setArrastrando] = useState(false);
   const [modoArrastre, setModoArrastre] = useState(null);
   const [dispOtros, setDispOtros] = useState({});
+  const gridRef = useRef(null);
 
   useEffect(() => {
     const cargarDatos = async () => {
-      const [
-        { data: miembro },
-        { data: dispTodos },
-      ] = await Promise.all([
+      const [{ data: miembro }, { data: dispTodos }] = await Promise.all([
         supabase.from("miembros").select("*").eq("grupo_id", id).eq("nombre", miNombre).limit(1).maybeSingle(),
         supabase.from("disponibilidades").select("*").eq("grupo_id", id),
       ]);
@@ -82,26 +78,46 @@ function DisponibilidadContenido() {
       if (dispTodos) {
         const sel = {};
         const mapa = {};
-
         dispTodos.forEach(({ miembro_id, fecha, hora_inicio }) => {
           const { fechaVisual, hora } = fromDb(fecha, hora_inicio);
           const key = `${fechaVisual}-${hora}`;
-
-          if (miembro && miembro_id === miembro.id) {
-            sel[key] = true;
-          } else {
-            mapa[key] = (mapa[key] || 0) + 1;
-          }
+          if (miembro && miembro_id === miembro.id) sel[key] = true;
+          else mapa[key] = (mapa[key] || 0) + 1;
         });
-
         setSeleccion(sel);
         setDispOtros(mapa);
       }
-
       setCargandoDatos(false);
     };
     cargarDatos();
   }, [id, miNombre]);
+
+  // Touch support
+  const getCeldaFromTouch = (touch) => {
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!el) return null;
+    const fecha = el.dataset.fecha;
+    const hora = el.dataset.hora;
+    if (!fecha || hora === undefined) return null;
+    return { fecha, hora: parseInt(hora) };
+  };
+
+  const handleTouchStart = (fecha, hora) => {
+    const key = `${fecha}-${hora}`;
+    const nuevoEstado = !seleccion[key];
+    setModoArrastre(nuevoEstado);
+    setArrastrando(true);
+    setSeleccion(prev => ({ ...prev, [key]: nuevoEstado }));
+  };
+
+  const handleTouchMove = (e) => {
+    if (!arrastrando) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const celda = getCeldaFromTouch(touch);
+    if (!celda) return;
+    setSeleccion(prev => ({ ...prev, [`${celda.fecha}-${celda.hora}`]: modoArrastre }));
+  };
 
   const handleMouseDown = (fecha, hora) => {
     const key = `${fecha}-${hora}`;
@@ -116,7 +132,7 @@ function DisponibilidadContenido() {
     setSeleccion(prev => ({ ...prev, [`${fecha}-${hora}`]: modoArrastre }));
   };
 
-  const handleMouseUp = () => setArrastrando(false);
+  const handleEnd = () => setArrastrando(false);
 
   const guardar = async () => {
     setCargando(true);
@@ -132,20 +148,13 @@ function DisponibilidadContenido() {
     const slots = Object.entries(seleccion)
       .filter(([, v]) => v)
       .map(([key]) => {
-        // Key format: "YYYY-MM-DD-H" (H sin padding)
         const lastDash = key.lastIndexOf("-");
         const fechaVisual = key.substring(0, lastDash);
         const hora = parseInt(key.substring(lastDash + 1));
         const { dbFecha, dbHora } = toDb(fechaVisual, hora);
         const horaFinNum = (hora + 1) % 24;
         const { dbHora: dbHoraFin } = toDb(fechaVisual, horaFinNum);
-        return {
-          miembro_id: miembro.id,
-          grupo_id: id,
-          fecha: dbFecha,
-          hora_inicio: dbHora,
-          hora_fin: dbHoraFin,
-        };
+        return { miembro_id: miembro.id, grupo_id: id, fecha: dbFecha, hora_inicio: dbHora, hora_fin: dbHoraFin };
       });
 
     if (slots.length === 0) { alert("Seleccioná al menos un horario"); setCargando(false); return; }
@@ -164,69 +173,76 @@ function DisponibilidadContenido() {
     const cantOtros = dispOtros[key] || 0;
     const tr = "background 0.1s ease";
     if (activo && cantOtros > 0) {
-      const intensidadVioleta = 0.35 + (cantOtros / otrosMax) * 0.55;
-      return { borderRadius: "7px", marginBottom: 2, transition: tr, background: "rgba(167,139,250," + intensidadVioleta + ")" };
+      const i = 0.35 + (cantOtros / otrosMax) * 0.55;
+      return { borderRadius: "6px", marginBottom: 2, transition: tr, background: `rgba(167,139,250,${i})` };
     }
-    if (activo) {
-      return { borderRadius: "7px", marginBottom: 2, transition: tr, background: "var(--accent)" };
-    }
+    if (activo) return { borderRadius: "6px", marginBottom: 2, transition: tr, background: "var(--accent)" };
     if (cantOtros > 0) {
       const pct = cantOtros / otrosMax;
-      return { borderRadius: "7px", marginBottom: 2, transition: tr, background: "rgba(99,179,237," + (0.08 + pct * 0.35) + ")" };
+      return { borderRadius: "6px", marginBottom: 2, transition: tr, background: `rgba(99,179,237,${0.08 + pct * 0.35})` };
     }
-    return { borderRadius: "7px", marginBottom: 2, transition: tr, background: "var(--surface-2)" };
+    return { borderRadius: "6px", marginBottom: 2, transition: tr, background: "var(--surface-2)" };
   };
 
   if (cargandoDatos) return <Loader />;
 
+  const CELDA_H = 38;
+  const COL_W = 48;
+  const HORA_W = 44;
+
   return (
-    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "32px 20px" }} onMouseUp={handleMouseUp}>
-      <button onClick={() => router.push(`/grupo/${id}?miembro=${miNombre}`)} style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "24px", padding: 0 }}>
+    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "20px 16px" }}
+      onMouseUp={handleEnd} onTouchEnd={handleEnd}>
+      <button onClick={() => router.push(`/grupo/${id}?miembro=${miNombre}`)}
+        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "20px", padding: 0 }}>
         ← Volver al grupo
       </button>
 
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "24px", fontWeight: 800, color: "var(--text)", marginBottom: "12px" }}>Tu disponibilidad</h1>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {[
-            { color: "#34D399", bg: "#34D399", label: "Vos" },
-            { color: "#63B3ED", bg: "rgba(99,179,237,0.2)", label: "Otros" },
-            { color: "#A78BFA", bg: "rgba(167,139,250,0.7)", label: "Coinciden" },
-          ].map(({ color, bg, label }) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px" }}>
-              <div style={{ width: "10px", height: "10px", borderRadius: "3px", background: bg }} />
-              <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
-            </div>
-          ))}
-          <div style={{ display: "flex", alignItems: "center", padding: "5px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px" }}>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Arrastrá para seleccionar</span>
+      <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "22px", fontWeight: 800, color: "var(--text)", marginBottom: "12px" }}>
+        Tu disponibilidad
+      </h1>
+
+      {/* Leyenda */}
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "16px" }}>
+        {[
+          { bg: "#34D399", label: "Vos" },
+          { bg: "rgba(99,179,237,0.35)", label: "Otros" },
+          { bg: "rgba(167,139,250,0.7)", label: "Coinciden" },
+        ].map(({ bg, label }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px" }}>
+            <div style={{ width: "9px", height: "9px", borderRadius: "2px", background: bg }} />
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
           </div>
-        </div>
+        ))}
       </div>
 
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 16px", marginBottom: "20px", userSelect: "none" }}>
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ display: "flex", gap: "4px", minWidth: "fit-content" }}>
+      {/* Calendario */}
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "18px", padding: "14px 10px", marginBottom: "20px", userSelect: "none", touchAction: "none" }}>
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}
+          ref={gridRef}
+          onTouchMove={handleTouchMove}>
+          <div style={{ display: "flex", gap: "3px", minWidth: `${HORA_W + DIAS.length * (COL_W + 3)}px` }}>
 
-            {/* Columna de horas */}
-            <div style={{ display: "flex", flexDirection: "column", paddingTop: "36px", marginRight: "4px" }}>
+            {/* Columna horas */}
+            <div style={{ width: HORA_W, flexShrink: 0, display: "flex", flexDirection: "column", paddingTop: "48px" }}>
               {HORAS.map(hora => (
-                <div key={hora} style={{ height: "32px", marginBottom: "2px", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
-                  <span style={{ fontSize: "12px", color: "var(--text-muted)", whiteSpace: "nowrap", lineHeight: 1 }}>{formatHora(hora)}</span>
+                <div key={hora} style={{ height: CELDA_H, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "6px" }}>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
                 </div>
               ))}
             </div>
 
-            {/* Columnas de días */}
+            {/* Columnas días */}
             {DIAS.map(d => {
               const fecha = formatFecha(d);
+              const { top, bot } = nombreDia(d);
+              const hoy = esHoy(d);
               return (
-                <div key={fecha} style={{ flex: 1, minWidth: "38px", display: "flex", flexDirection: "column" }}>
-                  {/* Header día */}
-                  <div style={{ height: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 700, color: esHoy(d) ? "var(--accent)" : "var(--text-muted)", letterSpacing: "0.03em", textAlign: "center", lineHeight: 1.3 }}>
-                      {nombreDia(d)}
-                    </span>
+                <div key={fecha} style={{ width: COL_W, flexShrink: 0, display: "flex", flexDirection: "column" }}>
+                  {/* Header */}
+                  <div style={{ height: "48px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize" }}>{top}</span>
+                    {bot !== "" && <span style={{ fontSize: "12px", fontWeight: 800, color: hoy ? "var(--accent)" : "var(--text)" }}>{bot}</span>}
                   </div>
                   {/* Celdas */}
                   {HORAS.map(hora => {
@@ -234,9 +250,12 @@ function DisponibilidadContenido() {
                     return (
                       <div
                         key={hora}
+                        data-fecha={fecha}
+                        data-hora={hora}
                         onMouseDown={() => handleMouseDown(fecha, hora)}
                         onMouseEnter={() => handleMouseEnter(fecha, hora)}
-                        style={{ height: "32px", cursor: "pointer", ...cStyle }}
+                        onTouchStart={() => handleTouchStart(fecha, hora)}
+                        style={{ height: CELDA_H, cursor: "pointer", ...cStyle }}
                       />
                     );
                   })}
@@ -249,9 +268,10 @@ function DisponibilidadContenido() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-          <span style={{ color: "var(--accent)", fontWeight: 700 }}>{totalSeleccionados}</span> horarios seleccionados
+          <span style={{ color: "var(--accent)", fontWeight: 700 }}>{totalSeleccionados}</span> seleccionados
         </p>
-        <button onClick={guardar} disabled={cargando} style={{ padding: "13px 32px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}>
+        <button onClick={guardar} disabled={cargando}
+          style={{ padding: "13px 28px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}>
           {cargando ? "Guardando..." : "Guardar →"}
         </button>
       </div>
@@ -267,4 +287,4 @@ export default function Disponibilidad() {
       </Suspense>
     </main>
   );
-} 
+}
