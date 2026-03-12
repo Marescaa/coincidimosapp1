@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Brand from "@/app/components/Brand";
+import { Analytics } from '@vercel/analytics/next';
 
 
 export default function Home() {
@@ -89,7 +90,7 @@ export default function Home() {
             </div>
           )}
         </div>
-
+          <Analytics />
         <p className="fade-up s3" style={{ textAlign: "center", fontSize: "11px", color: "var(--text-muted)", marginTop: "20px" }}>
           Con cuenta podes crear grupos, ver historial y ganar niveles 🚀
         </p>

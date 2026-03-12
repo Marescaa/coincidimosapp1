@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Loader from "@/app/components/Loader";
+import { useToast } from "@/app/components/ui/Toast";
 
-const HORAS = [7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,0,1,2,3,4,5,6];
+const HORAS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
 
 const DIAS = Array.from({ length: 14 }, (_, i) => {
   const d = new Date();
@@ -59,7 +60,9 @@ function DisponibilidadContenido() {
   const searchParams = useSearchParams();
   const miNombre = searchParams.get("miembro");
   const router = useRouter();
+  const toast = useToast();
 
+  const [miMiembro, setMiMiembro] = useState(null);
   const [seleccion, setSeleccion] = useState({});
   const [cargando, setCargando] = useState(false);
   const [cargandoDatos, setCargandoDatos] = useState(true);
@@ -68,12 +71,39 @@ function DisponibilidadContenido() {
   const [dispOtros, setDispOtros] = useState({});
   const gridRef = useRef(null);
 
+  // SEGURIDAD: Igual que en grupo/[id]/page.js — verificar identidad real
+  const resolverMiMiembro = useCallback(async (miembrosData) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const porUserId = miembrosData.find((m) => m.user_id === user.id);
+      if (porUserId) return porUserId;
+    }
+    // Invitado: buscar en sessionStorage
+    const guardadoId = sessionStorage.getItem(`coincidimos_miembro_${id}`);
+    if (guardadoId) {
+      const porId = miembrosData.find((m) => String(m.id) === guardadoId);
+      if (porId) return porId;
+    }
+    // Fallback por nombre (compatibilidad con sesiones existentes)
+    if (miNombre) {
+      const porNombre = miembrosData.find((m) => m.nombre === miNombre);
+      if (porNombre) {
+        sessionStorage.setItem(`coincidimos_miembro_${id}`, String(porNombre.id));
+        return porNombre;
+      }
+    }
+    return null;
+  }, [id, miNombre]);
+
   useEffect(() => {
     const cargarDatos = async () => {
-      const [{ data: miembro }, { data: dispTodos }] = await Promise.all([
-        supabase.from("miembros").select("*").eq("grupo_id", id).eq("nombre", miNombre).limit(1).maybeSingle(),
+      const [{ data: miembrosData }, { data: dispTodos }] = await Promise.all([
+        supabase.from("miembros").select("*").eq("grupo_id", id),
         supabase.from("disponibilidades").select("*").eq("grupo_id", id),
       ]);
+
+      const yo = await resolverMiMiembro(miembrosData || []);
+      setMiMiembro(yo);
 
       if (dispTodos) {
         const sel = {};
@@ -81,7 +111,7 @@ function DisponibilidadContenido() {
         dispTodos.forEach(({ miembro_id, fecha, hora_inicio }) => {
           const { fechaVisual, hora } = fromDb(fecha, hora_inicio);
           const key = `${fechaVisual}-${hora}`;
-          if (miembro && miembro_id === miembro.id) sel[key] = true;
+          if (yo && miembro_id === yo.id) sel[key] = true;
           else mapa[key] = (mapa[key] || 0) + 1;
         });
         setSeleccion(sel);
@@ -90,7 +120,7 @@ function DisponibilidadContenido() {
       setCargandoDatos(false);
     };
     cargarDatos();
-  }, [id, miNombre]);
+  }, [id, resolverMiMiembro]);
 
   // Touch support
   const getCeldaFromTouch = (touch) => {
@@ -107,7 +137,7 @@ function DisponibilidadContenido() {
     const nuevoEstado = !seleccion[key];
     setModoArrastre(nuevoEstado);
     setArrastrando(true);
-    setSeleccion(prev => ({ ...prev, [key]: nuevoEstado }));
+    setSeleccion((prev) => ({ ...prev, [key]: nuevoEstado }));
   };
 
   const handleTouchMove = (e) => {
@@ -116,7 +146,10 @@ function DisponibilidadContenido() {
     const touch = e.touches[0];
     const celda = getCeldaFromTouch(touch);
     if (!celda) return;
-    setSeleccion(prev => ({ ...prev, [`${celda.fecha}-${celda.hora}`]: modoArrastre }));
+    setSeleccion((prev) => ({
+      ...prev,
+      [`${celda.fecha}-${celda.hora}`]: modoArrastre,
+    }));
   };
 
   const handleMouseDown = (fecha, hora) => {
@@ -124,26 +157,25 @@ function DisponibilidadContenido() {
     const nuevoEstado = !seleccion[key];
     setModoArrastre(nuevoEstado);
     setArrastrando(true);
-    setSeleccion(prev => ({ ...prev, [key]: nuevoEstado }));
+    setSeleccion((prev) => ({ ...prev, [key]: nuevoEstado }));
   };
 
   const handleMouseEnter = (fecha, hora) => {
     if (!arrastrando) return;
-    setSeleccion(prev => ({ ...prev, [`${fecha}-${hora}`]: modoArrastre }));
+    setSeleccion((prev) => ({
+      ...prev,
+      [`${fecha}-${hora}`]: modoArrastre,
+    }));
   };
 
   const handleEnd = () => setArrastrando(false);
 
   const guardar = async () => {
-    setCargando(true);
-    const { data: miembro } = await supabase
-      .from("miembros").select("*")
-      .eq("grupo_id", id).eq("nombre", miNombre)
-      .limit(1).maybeSingle();
-
-    if (!miembro) { alert("No se encontro tu perfil"); setCargando(false); return; }
-
-    await supabase.from("disponibilidades").delete().eq("miembro_id", miembro.id);
+    // SEGURIDAD: usar miMiembro verificado, no el nombre del URL
+    if (!miMiembro) {
+      toast.err("No se pudo verificar tu identidad. Volvé al grupo e intentá de nuevo.");
+      return;
+    }
 
     const slots = Object.entries(seleccion)
       .filter(([, v]) => v)
@@ -154,14 +186,29 @@ function DisponibilidadContenido() {
         const { dbFecha, dbHora } = toDb(fechaVisual, hora);
         const horaFinNum = (hora + 1) % 24;
         const { dbHora: dbHoraFin } = toDb(fechaVisual, horaFinNum);
-        return { miembro_id: miembro.id, grupo_id: id, fecha: dbFecha, hora_inicio: dbHora, hora_fin: dbHoraFin };
+        return {
+          miembro_id: miMiembro.id,
+          grupo_id: id,
+          fecha: dbFecha,
+          hora_inicio: dbHora,
+          hora_fin: dbHoraFin,
+        };
       });
 
-    if (slots.length === 0) { alert("Seleccioná al menos un horario"); setCargando(false); return; }
+    if (slots.length === 0) {
+      toast.err("Seleccioná al menos un horario");
+      return;
+    }
 
+    setCargando(true);
+    await supabase.from("disponibilidades").delete().eq("miembro_id", miMiembro.id);
     await supabase.from("disponibilidades").insert(slots);
-    await supabase.from("notificaciones").insert({ grupo_id: id, texto: `${miNombre} cargo su disponibilidad` });
-    router.push(`/grupo/${id}?miembro=${miNombre}`);
+    await supabase.from("notificaciones").insert({
+      grupo_id: id,
+      texto: `${miMiembro.nombre} cargó su disponibilidad`,
+    });
+    toast.ok("¡Disponibilidad guardada!");
+    router.push(`/grupo/${id}?miembro=${miMiembro.nombre}`);
   };
 
   const totalSeleccionados = Object.values(seleccion).filter(Boolean).length;
@@ -189,12 +236,18 @@ function DisponibilidadContenido() {
   const CELDA_H = 38;
   const COL_W = 48;
   const HORA_W = 44;
+  const miNombreActual = miMiembro?.nombre ?? miNombre ?? "Invitado";
 
   return (
-    <div style={{ maxWidth: "820px", margin: "0 auto", padding: "20px 16px" }}
-      onMouseUp={handleEnd} onTouchEnd={handleEnd}>
-      <button onClick={() => router.push(`/grupo/${id}?miembro=${miNombre}`)}
-        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "20px", padding: 0 }}>
+    <div
+      style={{ maxWidth: "820px", margin: "0 auto", padding: "20px 16px" }}
+      onMouseUp={handleEnd}
+      onTouchEnd={handleEnd}
+    >
+      <button
+        onClick={() => router.push(`/grupo/${id}?miembro=${miNombreActual}`)}
+        style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer", marginBottom: "20px", padding: 0 }}
+      >
         ← Volver al grupo
       </button>
 
@@ -218,14 +271,16 @@ function DisponibilidadContenido() {
 
       {/* Calendario */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "18px", padding: "14px 10px", marginBottom: "20px", userSelect: "none", touchAction: "none" }}>
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}
+        <div
+          style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}
           ref={gridRef}
-          onTouchMove={handleTouchMove}>
+          onTouchMove={handleTouchMove}
+        >
           <div style={{ display: "flex", gap: "3px", minWidth: `${HORA_W + DIAS.length * (COL_W + 3)}px` }}>
 
             {/* Columna horas */}
             <div style={{ width: HORA_W, flexShrink: 0, display: "flex", flexDirection: "column", paddingTop: "48px" }}>
-              {HORAS.map(hora => (
+              {HORAS.map((hora) => (
                 <div key={hora} style={{ height: CELDA_H, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "6px" }}>
                   <span style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
                 </div>
@@ -233,19 +288,17 @@ function DisponibilidadContenido() {
             </div>
 
             {/* Columnas días */}
-            {DIAS.map(d => {
+            {DIAS.map((d) => {
               const fecha = formatFecha(d);
               const { top, bot } = nombreDia(d);
               const hoy = esHoy(d);
               return (
                 <div key={fecha} style={{ width: COL_W, flexShrink: 0, display: "flex", flexDirection: "column" }}>
-                  {/* Header */}
                   <div style={{ height: "48px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px" }}>
                     <span style={{ fontSize: "10px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize" }}>{top}</span>
                     {bot !== "" && <span style={{ fontSize: "12px", fontWeight: 800, color: hoy ? "var(--accent)" : "var(--text)" }}>{bot}</span>}
                   </div>
-                  {/* Celdas */}
-                  {HORAS.map(hora => {
+                  {HORAS.map((hora) => {
                     const cStyle = getCeldaStyle(fecha, hora);
                     return (
                       <div
@@ -270,8 +323,11 @@ function DisponibilidadContenido() {
         <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
           <span style={{ color: "var(--accent)", fontWeight: 700 }}>{totalSeleccionados}</span> seleccionados
         </p>
-        <button onClick={guardar} disabled={cargando}
-          style={{ padding: "13px 28px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}>
+        <button
+          onClick={guardar}
+          disabled={cargando}
+          style={{ padding: "13px 28px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}
+        >
           {cargando ? "Guardando..." : "Guardar →"}
         </button>
       </div>
