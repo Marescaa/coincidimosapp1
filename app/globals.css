@@ -46,17 +46,19 @@ html {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'DM Sans', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  /* Previene scroll horizontal en mobile */
-  overflow-x: hidden;
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
 }
 
-h1, h2, h3, h4 { font-family: 'Syne', sans-serif !important; }
 
 /* =====================================================
    ANIMACIONES
