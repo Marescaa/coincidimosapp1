@@ -427,7 +427,7 @@ function GrupoContenido() {
             <p style={{ fontSize: "13px", color: "var(--text-muted)", textAlign: "center", padding: "16px 0" }}>Todavia nadie cargo disponibilidad.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {slots.slice(0, 16).map(({ fechaVisual, horaIni, cantidad, total }, idx) => {
+              {slots.slice(0, 8).map(({ fechaVisual, horaIni, cantidad, total }, idx) => {
                 const c = slotColor(cantidad, total);
                 return (
                   <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: c.bg, border: `1px solid ${c.border}`, borderRadius: "10px" }}>

@@ -7,7 +7,8 @@ import { useToast } from "@/app/components/ui/Toast";
 
 const HORAS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6];
 
-const DIAS = Array.from({ length: 14 }, (_, i) => {
+// 7 días — caben sin scroll horizontal
+const DIAS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() + i);
   return d;
@@ -71,20 +72,17 @@ function DisponibilidadContenido() {
   const [dispOtros, setDispOtros] = useState({});
   const gridRef = useRef(null);
 
-  // SEGURIDAD: Igual que en grupo/[id]/page.js — verificar identidad real
   const resolverMiMiembro = useCallback(async (miembrosData) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const porUserId = miembrosData.find((m) => m.user_id === user.id);
       if (porUserId) return porUserId;
     }
-    // Invitado: buscar en sessionStorage
     const guardadoId = sessionStorage.getItem(`coincidimos_miembro_${id}`);
     if (guardadoId) {
       const porId = miembrosData.find((m) => String(m.id) === guardadoId);
       if (porId) return porId;
     }
-    // Fallback por nombre (compatibilidad con sesiones existentes)
     if (miNombre) {
       const porNombre = miembrosData.find((m) => m.nombre === miNombre);
       if (porNombre) {
@@ -122,35 +120,60 @@ function DisponibilidadContenido() {
     cargarDatos();
   }, [id, resolverMiMiembro]);
 
-  // Touch support
-  const getCeldaFromTouch = (touch) => {
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (!el) return null;
-    const fecha = el.dataset.fecha;
-    const hora = el.dataset.hora;
-    if (!fecha || hora === undefined) return null;
-    return { fecha, hora: parseInt(hora) };
-  };
+  // Touch: registrado con useEffect para poder usar { passive: false }
+  // y bloquear el scroll de la página mientras se selecciona
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
 
-  const handleTouchStart = (fecha, hora) => {
-    const key = `${fecha}-${hora}`;
-    const nuevoEstado = !seleccion[key];
-    setModoArrastre(nuevoEstado);
-    setArrastrando(true);
-    setSeleccion((prev) => ({ ...prev, [key]: nuevoEstado }));
-  };
+    const getCeldaEnPunto = (x, y) => {
+      const el = document.elementFromPoint(x, y);
+      if (!el) return null;
+      const target = el.closest("[data-fecha]");
+      if (!target) return null;
+      const fecha = target.dataset.fecha;
+      const hora = parseInt(target.dataset.hora);
+      if (!fecha || isNaN(hora)) return null;
+      return { fecha, hora };
+    };
 
-  const handleTouchMove = (e) => {
-    if (!arrastrando) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const celda = getCeldaFromTouch(touch);
-    if (!celda) return;
-    setSeleccion((prev) => ({
-      ...prev,
-      [`${celda.fecha}-${celda.hora}`]: modoArrastre,
-    }));
-  };
+    const onTouchStart = (e) => {
+      const touch = e.touches[0];
+      const celda = getCeldaEnPunto(touch.clientX, touch.clientY);
+      if (!celda) return;
+      setArrastrando(true);
+      setSeleccion((prev) => {
+        const nuevo = !prev[`${celda.fecha}-${celda.hora}`];
+        setModoArrastre(nuevo);
+        return { ...prev, [`${celda.fecha}-${celda.hora}`]: nuevo };
+      });
+    };
+
+    const onTouchMove = (e) => {
+      if (!arrastrando) return;
+      e.preventDefault(); // bloquea scroll mientras se selecciona
+      const touch = e.touches[0];
+      const celda = getCeldaEnPunto(touch.clientX, touch.clientY);
+      if (!celda) return;
+      const key = `${celda.fecha}-${celda.hora}`;
+      setSeleccion((prev) => {
+        if (prev[key] === modoArrastre) return prev;
+        return { ...prev, [key]: modoArrastre };
+      });
+    };
+
+    const onTouchEnd = () => setArrastrando(false);
+
+    grid.addEventListener("touchstart", onTouchStart, { passive: true });
+    grid.addEventListener("touchmove", onTouchMove, { passive: false });
+    grid.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      grid.removeEventListener("touchstart", onTouchStart);
+      grid.removeEventListener("touchmove", onTouchMove);
+      grid.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [arrastrando, modoArrastre]);
 
   const handleMouseDown = (fecha, hora) => {
     const key = `${fecha}-${hora}`;
@@ -162,16 +185,12 @@ function DisponibilidadContenido() {
 
   const handleMouseEnter = (fecha, hora) => {
     if (!arrastrando) return;
-    setSeleccion((prev) => ({
-      ...prev,
-      [`${fecha}-${hora}`]: modoArrastre,
-    }));
+    setSeleccion((prev) => ({ ...prev, [`${fecha}-${hora}`]: modoArrastre }));
   };
 
   const handleEnd = () => setArrastrando(false);
 
   const guardar = async () => {
-    // SEGURIDAD: usar miMiembro verificado, no el nombre del URL
     if (!miMiembro) {
       toast.err("No se pudo verificar tu identidad. Volvé al grupo e intentá de nuevo.");
       return;
@@ -221,26 +240,26 @@ function DisponibilidadContenido() {
     const tr = "background 0.1s ease";
     if (activo && cantOtros > 0) {
       const i = 0.35 + (cantOtros / otrosMax) * 0.55;
-      return { borderRadius: "6px", marginBottom: 2, transition: tr, background: `rgba(167,139,250,${i})` };
+      return { borderRadius: "5px", marginBottom: 2, transition: tr, background: `rgba(167,139,250,${i})` };
     }
-    if (activo) return { borderRadius: "6px", marginBottom: 2, transition: tr, background: "var(--accent)" };
+    if (activo) return { borderRadius: "5px", marginBottom: 2, transition: tr, background: "var(--accent)" };
     if (cantOtros > 0) {
       const pct = cantOtros / otrosMax;
-      return { borderRadius: "6px", marginBottom: 2, transition: tr, background: `rgba(99,179,237,${0.08 + pct * 0.35})` };
+      return { borderRadius: "5px", marginBottom: 2, transition: tr, background: `rgba(99,179,237,${0.08 + pct * 0.35})` };
     }
-    return { borderRadius: "6px", marginBottom: 2, transition: tr, background: "var(--surface-2)" };
+    return { borderRadius: "5px", marginBottom: 2, transition: tr, background: "var(--surface-2)" };
   };
 
   if (cargandoDatos) return <Loader />;
 
+  // Columnas más anchas al tener solo 7 días
   const CELDA_H = 38;
-  const COL_W = 48;
   const HORA_W = 44;
   const miNombreActual = miMiembro?.nombre ?? miNombre ?? "Invitado";
 
   return (
     <div
-      style={{ maxWidth: "820px", margin: "0 auto", padding: "20px 16px" }}
+      style={{ maxWidth: "520px", margin: "0 auto", padding: "20px 16px" }}
       onMouseUp={handleEnd}
       onTouchEnd={handleEnd}
     >
@@ -269,53 +288,55 @@ function DisponibilidadContenido() {
         ))}
       </div>
 
-      {/* Calendario */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "18px", padding: "14px 10px", marginBottom: "20px", userSelect: "none", touchAction: "none" }}>
-        <div
-          style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}
-          ref={gridRef}
-          onTouchMove={handleTouchMove}
-        >
-          <div style={{ display: "flex", gap: "3px", minWidth: `${HORA_W + DIAS.length * (COL_W + 3)}px` }}>
+      {/* Calendario — sin overflowX, las 7 columnas se distribuyen con flex */}
+      <div
+        ref={gridRef}
+        style={{
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: "18px",
+          padding: "14px 10px",
+          marginBottom: "20px",
+          userSelect: "none",
+        }}
+      >
+        <div style={{ display: "flex", gap: "3px" }}>
 
-            {/* Columna horas */}
-            <div style={{ width: HORA_W, flexShrink: 0, display: "flex", flexDirection: "column", paddingTop: "48px" }}>
-              {HORAS.map((hora) => (
-                <div key={hora} style={{ height: CELDA_H, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "6px" }}>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Columnas días */}
-            {DIAS.map((d) => {
-              const fecha = formatFecha(d);
-              const { top, bot } = nombreDia(d);
-              const hoy = esHoy(d);
-              return (
-                <div key={fecha} style={{ width: COL_W, flexShrink: 0, display: "flex", flexDirection: "column" }}>
-                  <div style={{ height: "48px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize" }}>{top}</span>
-                    {bot !== "" && <span style={{ fontSize: "12px", fontWeight: 800, color: hoy ? "var(--accent)" : "var(--text)" }}>{bot}</span>}
-                  </div>
-                  {HORAS.map((hora) => {
-                    const cStyle = getCeldaStyle(fecha, hora);
-                    return (
-                      <div
-                        key={hora}
-                        data-fecha={fecha}
-                        data-hora={hora}
-                        onMouseDown={() => handleMouseDown(fecha, hora)}
-                        onMouseEnter={() => handleMouseEnter(fecha, hora)}
-                        onTouchStart={() => handleTouchStart(fecha, hora)}
-                        style={{ height: CELDA_H, cursor: "pointer", ...cStyle }}
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
+          {/* Columna horas */}
+          <div style={{ width: HORA_W, flexShrink: 0, display: "flex", flexDirection: "column", paddingTop: "48px" }}>
+            {HORAS.map((hora) => (
+              <div key={hora} style={{ height: CELDA_H, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "6px" }}>
+                <span style={{ fontSize: "10px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
+              </div>
+            ))}
           </div>
+
+          {/* Columnas días — flex:1 para distribuir el espacio disponible */}
+          {DIAS.map((d) => {
+            const fecha = formatFecha(d);
+            const { top, bot } = nombreDia(d);
+            const hoy = esHoy(d);
+            return (
+              <div key={fecha} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                {/* Header */}
+                <div style={{ height: "48px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px" }}>
+                  <span style={{ fontSize: "9px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize", whiteSpace: "nowrap" }}>{top}</span>
+                  {bot !== "" && <span style={{ fontSize: "13px", fontWeight: 800, color: hoy ? "var(--accent)" : "var(--text)" }}>{bot}</span>}
+                </div>
+                {/* Celdas */}
+                {HORAS.map((hora) => (
+                  <div
+                    key={hora}
+                    data-fecha={fecha}
+                    data-hora={hora}
+                    onMouseDown={() => handleMouseDown(fecha, hora)}
+                    onMouseEnter={() => handleMouseEnter(fecha, hora)}
+                    style={{ height: CELDA_H, cursor: "pointer", ...getCeldaStyle(fecha, hora) }}
+                  />
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 
