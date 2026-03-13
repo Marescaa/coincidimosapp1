@@ -7,6 +7,7 @@ import Brand from "@/app/components/Brand";
 function LoginContenido() {
   const searchParams = useSearchParams();
   const [modo, setModo] = useState(searchParams.get("modo") === "registro" ? "registro" : "login");
+  const codigoGrupo = searchParams.get("codigo"); // viene de la landing cuando encontró un grupo
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
@@ -16,7 +17,6 @@ function LoginContenido() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Si ya hay sesión activa, ir directo al dashboard
   useEffect(() => {
     const verificarSesion = async () => {
       try {
@@ -45,6 +45,25 @@ function LoginContenido() {
     letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "8px", display: "block"
   };
 
+  const unirseAlGrupo = async (userId, nombreUsuario) => {
+    if (!codigoGrupo) return null;
+    const { data: grupo } = await supabase
+      .from("grupos").select("*").eq("codigo", codigoGrupo.toUpperCase()).single();
+    if (!grupo) return null;
+    // Verificar si ya es miembro
+    const { data: yaEsMiembro } = await supabase
+      .from("miembros").select("id")
+      .eq("grupo_id", grupo.id).eq("user_id", userId).maybeSingle();
+    if (!yaEsMiembro) {
+      await supabase.from("miembros").insert({
+        grupo_id: grupo.id,
+        nombre: nombreUsuario,
+        user_id: userId,
+      });
+    }
+    return grupo;
+  };
+
   const handleSubmit = async () => {
     setError("");
     if (!email || !password) return setError("Completa todos los campos");
@@ -61,10 +80,31 @@ function LoginContenido() {
       if (err) { setError(err.message); setCargando(false); return; }
       if (!data.user) { setError("Revisá tu email para confirmar tu cuenta"); setCargando(false); return; }
       await supabase.from("perfiles").insert({ id: data.user.id, nombre, usuario });
+
+      // Si viene con código de grupo, unirse automáticamente
+      if (codigoGrupo) {
+        const grupo = await unirseAlGrupo(data.user.id, nombre);
+        if (grupo) {
+          router.push(`/grupo/${grupo.id}?miembro=${nombre}`);
+          return;
+        }
+      }
       router.push("/dashboard");
+
     } else {
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) { setError("Email o contrasena incorrectos"); setCargando(false); return; }
+
+      // Si viene con código de grupo, unirse automáticamente
+      if (codigoGrupo) {
+        const { data: perfil } = await supabase
+          .from("perfiles").select("nombre").eq("id", data.user.id).single();
+        const grupo = await unirseAlGrupo(data.user.id, perfil?.nombre || "");
+        if (grupo) {
+          router.push(`/grupo/${grupo.id}?miembro=${perfil?.nombre || ""}`);
+          return;
+        }
+      }
       router.push("/dashboard");
     }
   };
@@ -80,6 +120,14 @@ function LoginContenido() {
         <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
           {modo === "login" ? "Bienvenido de nuevo" : "Crea tu cuenta gratis"}
         </p>
+        {/* Si viene con código, mostrar aviso */}
+        {codigoGrupo && (
+          <div style={{ marginTop: "12px", padding: "10px 16px", background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "10px" }}>
+            <p style={{ fontSize: "13px", color: "var(--accent)", fontWeight: 600 }}>
+              🎉 Te van a unir al grupo automáticamente
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="fade-up s1" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "32px" }}>
@@ -122,7 +170,7 @@ function LoginContenido() {
 
           <button onClick={handleSubmit} disabled={cargando}
             style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1, transition: "opacity 0.2s", marginTop: "4px" }}>
-            {cargando ? "Cargando..." : modo === "login" ? "Entrar →" : "Crear cuenta →"}
+            {cargando ? "Cargando..." : modo === "login" ? "Entrar →" : codigoGrupo ? "Crear cuenta y unirme →" : "Crear cuenta →"}
           </button>
         </div>
       </div>

@@ -10,24 +10,50 @@ export default function Home() {
   const [tuNombre, setTuNombre] = useState("");
   const [cargando, setCargando] = useState(false);
   const [mostrarUnirse, setMostrarUnirse] = useState(false);
+  const [grupoEncontrado, setGrupoEncontrado] = useState(null);
+  const [paso, setPaso] = useState("inicio"); // inicio | encontrado | nombre
   const router = useRouter();
+
   useEffect(() => {
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (session) router.replace("/dashboard");
-  });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace("/dashboard");
+    });
+    // Si viene con ?codigo= en la URL, pre-rellenar
+    const params = new URLSearchParams(window.location.search);
+    const codigoUrl = params.get("codigo");
+    if (codigoUrl) {
+      setCodigo(codigoUrl.toUpperCase());
+      setMostrarUnirse(true);
+    }
   }, []);
 
-  const unirseAlGrupo = async () => {
-    if (!codigo || !tuNombre) return alert("Completa todos los campos");
+  const buscarGrupo = async () => {
+    if (!codigo.trim()) return;
     setCargando(true);
     const { data: grupo, error } = await supabase
       .from("grupos").select("*").eq("codigo", codigo.toUpperCase()).single();
-    if (error || !grupo) { alert("Codigo invalido"); setCargando(false); return; }
-    await supabase.from("miembros").insert({ grupo_id: grupo.id, nombre: tuNombre });
-    router.push(`/grupo/${grupo.id}?miembro=${tuNombre}`);
+    if (error || !grupo) {
+      alert("Código inválido. Verificá que esté bien escrito.");
+      setCargando(false);
+      return;
+    }
+    setGrupoEncontrado(grupo);
+    setPaso("encontrado");
+    setCargando(false);
   };
 
-  const inputStyle = { width: "100%", padding: "12px 16px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px", color: "var(--text)", fontSize: "14px" };
+  const unirseComoInvitado = async () => {
+    if (!tuNombre.trim()) return;
+    setCargando(true);
+    await supabase.from("miembros").insert({ grupo_id: grupoEncontrado.id, nombre: tuNombre });
+    router.push(`/grupo/${grupoEncontrado.id}?miembro=${tuNombre}`);
+  };
+
+  const inputStyle = {
+    width: "100%", padding: "12px 16px",
+    background: "var(--surface-2)", border: "1px solid var(--border)",
+    borderRadius: "12px", color: "var(--text)", fontSize: "14px",
+  };
 
   return (
     <main style={{ background: "var(--bg)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px", position: "relative", overflow: "hidden" }}>
@@ -37,9 +63,7 @@ export default function Home() {
 
         {/* Nav */}
         <div className="fade-up s0" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
-            <Brand size="lg" />
-          </div>
+          <Brand size="lg" />
           <button
             onClick={() => router.push("/login")}
             style={{ fontSize: "13px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 16px", borderRadius: "10px", cursor: "pointer", fontFamily: "Syne, sans-serif", fontWeight: 600 }}
@@ -78,23 +102,58 @@ export default function Home() {
           </div>
 
           <button
-            onClick={() => setMostrarUnirse(!mostrarUnirse)}
+            onClick={() => { setMostrarUnirse(!mostrarUnirse); setPaso("inicio"); setGrupoEncontrado(null); }}
             style={{ width: "100%", padding: "13px", background: mostrarUnirse ? "var(--surface-2)" : "transparent", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
           >
             Tengo un codigo de invitacion
           </button>
 
-          {mostrarUnirse && (
+          {mostrarUnirse && paso === "inicio" && (
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <input type="text" placeholder="Codigo del grupo" value={codigo} onChange={e => setCodigo(e.target.value)} style={inputStyle} />
-              <input type="text" placeholder="Tu nombre" value={tuNombre} onChange={e => setTuNombre(e.target.value)} style={inputStyle} />
-              <button onClick={unirseAlGrupo} disabled={cargando} style={{ width: "100%", padding: "13px", background: "rgba(52,211,153,0.08)", color: "var(--accent)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", opacity: cargando ? 0.5 : 1 }}>
-                {cargando ? "Entrando..." : "Entrar al grupo →"}
+              <input type="text" placeholder="Codigo del grupo" value={codigo} onChange={e => setCodigo(e.target.value.toUpperCase())} onKeyDown={e => e.key === "Enter" && buscarGrupo()} style={inputStyle} autoFocus />
+              <button onClick={buscarGrupo} disabled={cargando} style={{ width: "100%", padding: "13px", background: "rgba(52,211,153,0.08)", color: "var(--accent)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", opacity: cargando ? 0.5 : 1 }}>
+                {cargando ? "Buscando..." : "Buscar grupo →"}
               </button>
             </div>
           )}
+
+          {mostrarUnirse && paso === "encontrado" && grupoEncontrado && (
+            <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Grupo encontrado */}
+              <div style={{ background: "rgba(52,211,153,0.06)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "12px", padding: "14px 16px" }}>
+                <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "4px" }}>Grupo encontrado</p>
+                <p style={{ fontFamily: "Syne, sans-serif", fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>{grupoEncontrado.nombre}</p>
+              </div>
+
+              {/* Opción 1: Crear cuenta */}
+              <button
+                onClick={() => router.push(`/login?modo=registro&codigo=${grupoEncontrado.codigo}`)}
+                style={{ width: "100%", padding: "13px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}
+              >
+                Crear cuenta y unirme →
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+                <span style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: 600 }}>O</span>
+                <div style={{ flex: 1, height: "1px", background: "var(--border)" }} />
+              </div>
+
+              {/* Opción 2: Entrar como invitado */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <input type="text" placeholder="Tu nombre (como invitado)" value={tuNombre} onChange={e => setTuNombre(e.target.value)} onKeyDown={e => e.key === "Enter" && unirseComoInvitado()} style={inputStyle} autoFocus />
+                <button onClick={unirseComoInvitado} disabled={cargando || !tuNombre.trim()} style={{ width: "100%", padding: "12px", background: "transparent", color: "var(--text-muted)", border: "1px solid var(--border)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer", opacity: !tuNombre.trim() ? 0.5 : 1 }}>
+                  Entrar sin cuenta (solo esta vez)
+                </button>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", textAlign: "center", lineHeight: 1.5 }}>
+                  Sin cuenta no podés guardar tu historial ni agregar amigos
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-          <Analytics />
+
+        <Analytics />
         <p className="fade-up s3" style={{ textAlign: "center", fontSize: "11px", color: "var(--text-muted)", marginTop: "20px" }}>
           Con cuenta podes crear grupos, ver historial y ganar niveles 🚀
         </p>
