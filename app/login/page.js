@@ -59,6 +59,7 @@ function LoginContenido() {
       await supabase.auth.signOut();
       const { data, error: err } = await supabase.auth.signUp({ email, password });
       if (err) { setError(err.message); setCargando(false); return; }
+      if (!data.user) { setError("Revisá tu email para confirmar tu cuenta"); setCargando(false); return; }
       await supabase.from("perfiles").insert({ id: data.user.id, nombre, usuario });
       router.push("/dashboard");
     } else {

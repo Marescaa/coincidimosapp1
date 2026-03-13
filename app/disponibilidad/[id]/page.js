@@ -306,7 +306,7 @@ function DisponibilidadContenido() {
           <div style={{ width: HORA_W, flexShrink: 0, display: "flex", flexDirection: "column", paddingTop: "48px" }}>
             {HORAS.map((hora) => (
               <div key={hora} style={{ height: CELDA_H, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: "6px" }}>
-                <span style={{ fontSize: "10px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatHora(hora)}</span>
               </div>
             ))}
           </div>
@@ -320,7 +320,7 @@ function DisponibilidadContenido() {
               <div key={fecha} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                 {/* Header */}
                 <div style={{ height: "48px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "1px" }}>
-                  <span style={{ fontSize: "9px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize", whiteSpace: "nowrap" }}>{top}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: hoy ? "var(--accent)" : "var(--text-muted)", textTransform: "capitalize", whiteSpace: "nowrap" }}>{top}</span>
                   {bot !== "" && <span style={{ fontSize: "13px", fontWeight: 800, color: hoy ? "var(--accent)" : "var(--text)" }}>{bot}</span>}
                 </div>
                 {/* Celdas */}

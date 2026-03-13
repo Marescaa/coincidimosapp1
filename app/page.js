@@ -1,10 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Brand from "@/app/components/Brand";
 import { Analytics } from '@vercel/analytics/next';
-
 
 export default function Home() {
   const [codigo, setCodigo] = useState("");
@@ -12,6 +11,11 @@ export default function Home() {
   const [cargando, setCargando] = useState(false);
   const [mostrarUnirse, setMostrarUnirse] = useState(false);
   const router = useRouter();
+  useEffect(() => {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) router.replace("/dashboard");
+  });
+  }, []);
 
   const unirseAlGrupo = async () => {
     if (!codigo || !tuNombre) return alert("Completa todos los campos");
