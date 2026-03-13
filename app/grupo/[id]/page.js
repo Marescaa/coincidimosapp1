@@ -309,13 +309,13 @@ function GrupoContenido() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "24px" }}>
           <div className="fade-in" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", maxWidth: "360px", width: "100%" }}>
             <p style={{ fontSize: "20px", marginBottom: "12px" }}>👋</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: "8px" }}>Salir del grupo</h2>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: "8px" }}>Salir del grupo</h2>
             <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "24px", lineHeight: 1.6 }}>
               Vas a salir de <strong style={{ color: "var(--text)" }}>{grupo.nombre}</strong>. Tu disponibilidad se va a borrar.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={() => setConfirmarSalir(false)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={salirDelGrupo} style={{ flex: 1, padding: "12px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Salir</button>
+              <button onClick={() => setConfirmarSalir(false)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={salirDelGrupo} style={{ flex: 1, padding: "12px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Salir</button>
             </div>
           </div>
         </div>
@@ -326,7 +326,7 @@ function GrupoContenido() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "24px" }}>
           <div className="fade-in" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", maxWidth: "360px", width: "100%" }}>
             <p style={{ fontSize: "20px", marginBottom: "12px" }}>🎉</p>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: "4px" }}>Confirmar plan</h2>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: "4px" }}>Confirmar plan</h2>
             <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "20px" }}>{fmt(propuestaAConfirmar.fecha, propuestaAConfirmar.hora)}</p>
             <div style={{ marginBottom: "20px" }}>
               <label style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", display: "block", marginBottom: "8px" }}>
@@ -343,8 +343,8 @@ function GrupoContenido() {
               />
             </div>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={() => setPropuestaAConfirmar(null)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
-              <button onClick={confirmarPlan} style={{ flex: 1, padding: "12px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Confirmar 🎉</button>
+              <button onClick={() => setPropuestaAConfirmar(null)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={confirmarPlan} style={{ flex: 1, padding: "12px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Confirmar 🎉</button>
             </div>
           </div>
         </div>
@@ -366,7 +366,7 @@ function GrupoContenido() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <p style={{ fontSize: "11px", fontWeight: 700, color: "#34D399", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "4px" }}>🎉 Plan confirmado</p>
-              <p style={{ fontFamily: "'Syne', sans-serif", fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>{fmt(grupo.plan_fecha, grupo.plan_hora)}</p>
+              <p style={{ fontFamily: "Syne, sans-serif", fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>{fmt(grupo.plan_fecha, grupo.plan_hora)}</p>
               {grupo.plan_ubicacion && <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "3px" }}>📍 {grupo.plan_ubicacion}</p>}
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>por {grupo.plan_confirmado_por}</p>
             </div>
@@ -377,7 +377,7 @@ function GrupoContenido() {
 
       {/* Header */}
       <div className="fade-up s0" style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "26px", fontWeight: 800, color: "var(--text)", marginBottom: "4px" }}>{grupo.nombre}</h1>
+        <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "26px", fontWeight: 800, color: "var(--text)", marginBottom: "4px" }}>{grupo.nombre}</h1>
         <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "10px" }}>Codigo: <span style={{ color: "var(--accent)", fontWeight: 700, letterSpacing: "0.1em" }}>{grupo.codigo}</span></p>
         {editandoDesc ? (
           <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
@@ -414,7 +414,7 @@ function GrupoContenido() {
       <div className="fade-up s2" style={{ display: "flex", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "4px", gap: "2px", marginBottom: "16px" }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setSeccionAbierta(tab.id)}
-            style={{ flex: 1, padding: "8px 4px", borderRadius: "9px", border: "none", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontSize: "11px", fontWeight: 700, transition: "all 0.2s", background: seccionAbierta === tab.id ? "var(--surface-2)" : "transparent", color: seccionAbierta === tab.id ? "var(--text)" : "var(--text-muted)", whiteSpace: "nowrap" }}>
+            style={{ flex: 1, padding: "8px 4px", borderRadius: "9px", border: "none", cursor: "pointer", fontFamily: "Syne, sans-serif", fontSize: "11px", fontWeight: 700, transition: "all 0.2s", background: seccionAbierta === tab.id ? "var(--surface-2)" : "transparent", color: seccionAbierta === tab.id ? "var(--text)" : "var(--text-muted)", whiteSpace: "nowrap" }}>
             {tab.label}
           </button>
         ))}
@@ -469,7 +469,7 @@ function GrupoContenido() {
                     </div>
                   </div>
                   <button onClick={() => puedeConfirmar && abrirConfirmarPlan(p)} disabled={!puedeConfirmar}
-                    style={{ width: "100%", padding: "10px", background: puedeConfirmar ? "rgba(52,211,153,0.08)" : "var(--surface)", border: `1px solid ${puedeConfirmar ? "rgba(52,211,153,0.2)" : "var(--border)"}`, color: puedeConfirmar ? "#34D399" : "var(--text-muted)", borderRadius: "10px", fontSize: "13px", fontWeight: 700, cursor: puedeConfirmar ? "pointer" : "not-allowed", fontFamily: "'Syne', sans-serif", opacity: puedeConfirmar ? 1 : 0.5 }}>
+                    style={{ width: "100%", padding: "10px", background: puedeConfirmar ? "rgba(52,211,153,0.08)" : "var(--surface)", border: `1px solid ${puedeConfirmar ? "rgba(52,211,153,0.2)" : "var(--border)"}`, color: puedeConfirmar ? "#34D399" : "var(--text-muted)", borderRadius: "10px", fontSize: "13px", fontWeight: 700, cursor: puedeConfirmar ? "pointer" : "not-allowed", fontFamily: "Syne, sans-serif", opacity: puedeConfirmar ? 1 : 0.5 }}>
                     {puedeConfirmar ? "🎉 Confirmar este plan" : "🔒 Todos deben votar primero"}
                   </button>
                 </div>
@@ -511,18 +511,18 @@ function GrupoContenido() {
 
       {/* Botones acción */}
       <div className="fade-up s3" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <button onClick={() => router.push(`/actividades/${id}?miembro=${miNombreActual}`)} className="card-interactive" style={{ width: "100%", padding: "14px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => router.push(`/actividades/${id}?miembro=${miNombreActual}`)} className="card-interactive" style={{ width: "100%", padding: "14px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
           🎯 ¿Que hacemos?
         </button>
-        <button onClick={() => router.push(`/disponibilidad/${id}?miembro=${miNombreActual}`)} style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => router.push(`/disponibilidad/${id}?miembro=${miNombreActual}`)} style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
           {miDisponibilidad.length > 0 ? "Editar disponibilidad" : "Agregar disponibilidad"}
         </button>
         {miDisponibilidad.length > 0 && (
-          <button onClick={borrarDisponibilidad} style={{ width: "100%", padding: "12px", background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={borrarDisponibilidad} style={{ width: "100%", padding: "12px", background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
             Borrar mi disponibilidad
           </button>
         )}
-        <button onClick={() => setConfirmarSalir(true)} style={{ width: "100%", padding: "12px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+        <button onClick={() => setConfirmarSalir(true)} style={{ width: "100%", padding: "12px", background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(248,113,113,0.3)"; e.currentTarget.style.color = "#F87171"; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
           Salir del grupo
@@ -534,7 +534,7 @@ function GrupoContenido() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "18px" }}>{nivel.emoji}</span>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: "13px", fontWeight: 700, color: "var(--text-muted)" }}>{nivel.nombre}</span>
+            <span style={{ fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 700, color: "var(--text-muted)" }}>{nivel.nombre}</span>
             <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>· {juntadas.length} juntadas</span>
           </div>
           {siguiente && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{siguiente.min - juntadas.length} para {siguiente.emoji}</span>}

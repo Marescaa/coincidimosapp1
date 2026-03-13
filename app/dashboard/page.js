@@ -287,7 +287,7 @@ export default function Dashboard() {
             <p style={{ fontSize: "20px", marginBottom: "12px" }}>👋</p>
             <h2
               style={{
-                fontFamily: "'Syne', sans-serif",
+                fontFamily: "Syne, sans-serif",
                 fontSize: "18px",
                 fontWeight: 800,
                 color: "var(--text)",
@@ -320,7 +320,7 @@ export default function Dashboard() {
                   border: "1px solid var(--border)",
                   color: "var(--text)",
                   borderRadius: "12px",
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "Syne, sans-serif",
                   fontSize: "14px",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -337,7 +337,7 @@ export default function Dashboard() {
                   border: "1px solid rgba(248,113,113,0.2)",
                   color: "#F87171",
                   borderRadius: "12px",
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "Syne, sans-serif",
                   fontSize: "14px",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -423,7 +423,7 @@ export default function Dashboard() {
         <div className="fade-up s0" style={{ marginBottom: "28px" }}>
           <h1
             style={{
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "Syne, sans-serif",
               fontSize: "22px",
               fontWeight: 800,
               color: "var(--text)",
@@ -457,7 +457,7 @@ export default function Dashboard() {
                   <div style={{ marginBottom: "12px" }}>
                     <p
                       style={{
-                        fontFamily: "'Syne', sans-serif",
+                        fontFamily: "Syne, sans-serif",
                         fontSize: "15px",
                         fontWeight: 700,
                         color: "var(--text)",
@@ -483,7 +483,7 @@ export default function Dashboard() {
                         border: "1px solid var(--border)",
                         color: "var(--text-muted)",
                         borderRadius: "10px",
-                        fontFamily: "'Syne', sans-serif",
+                        fontFamily: "Syne, sans-serif",
                         fontSize: "13px",
                         fontWeight: 600,
                         cursor: "pointer",
@@ -500,7 +500,7 @@ export default function Dashboard() {
                         color: "#0C0C0F",
                         border: "none",
                         borderRadius: "10px",
-                        fontFamily: "'Syne', sans-serif",
+                        fontFamily: "Syne, sans-serif",
                         fontSize: "13px",
                         fontWeight: 700,
                         cursor: "pointer",
@@ -543,7 +543,7 @@ export default function Dashboard() {
               >
                 <p
                   style={{
-                    fontFamily: "'Syne', sans-serif",
+                    fontFamily: "Syne, sans-serif",
                     fontSize: "24px",
                     fontWeight: 800,
                     color: "var(--text)",
@@ -586,7 +586,7 @@ export default function Dashboard() {
               color: "#0C0C0F",
               border: "none",
               borderRadius: "12px",
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "Syne, sans-serif",
               fontSize: "14px",
               fontWeight: 700,
               cursor: "pointer",
@@ -605,7 +605,7 @@ export default function Dashboard() {
               color: "var(--text)",
               border: "1px solid var(--border)",
               borderRadius: "12px",
-              fontFamily: "'Syne', sans-serif",
+              fontFamily: "Syne, sans-serif",
               fontSize: "14px",
               fontWeight: 700,
               cursor: "pointer",
@@ -659,7 +659,7 @@ export default function Dashboard() {
                   color: "#0C0C0F",
                   border: "none",
                   borderRadius: "12px",
-                  fontFamily: "'Syne', sans-serif",
+                  fontFamily: "Syne, sans-serif",
                   fontWeight: 700,
                   cursor: "pointer",
                   whiteSpace: "nowrap",
@@ -734,7 +734,7 @@ export default function Dashboard() {
                     >
                       <h2
                         style={{
-                          fontFamily: "'Syne', sans-serif",
+                          fontFamily: "Syne, sans-serif",
                           fontSize: "16px",
                           fontWeight: 700,
                           color: "var(--text)",
@@ -856,4 +856,3 @@ export default function Dashboard() {
     </main>
   );
 }
-

@@ -67,7 +67,7 @@ export default function Btn({
         ...v,
         ...s,
         width: fullWidth ? '100%' : undefined,
-        fontFamily: ''Syne', sans-serif',
+        fontFamily: "'Syne', sans-serif",
         cursor: disabled || loading ? 'not-allowed' : 'pointer',
         opacity: disabled || loading ? 0.55 : 1,
         display: 'inline-flex',

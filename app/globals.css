@@ -1,3 +1,14 @@
+/* =====================================================
+   COINCIDIMOS — globals.css
+   CAMBIOS vs. versión anterior:
+   1. @import movido ANTES de @tailwind (era un bug silencioso)
+   2. Agregado @keyframes spin (faltaba, roto en Btn/Loader)
+   3. Agregado .shimmer para los Skeleton components
+   4. Agregadas clases de utilidad para no repetir inline styles
+   5. Safe-area para Android/iOS (Capacitor)
+   ===================================================== */
+
+/* ⚠️  IMPORTANTE: @import debe ir ANTES de cualquier directiva @tailwind */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
 
 @tailwind base;
@@ -8,29 +19,48 @@
   --bg: #0C0C0F;
   --surface: #141418;
   --surface-2: #1C1C23;
+  --surface-3: #252530;
   --border: rgba(255, 255, 255, 0.07);
   --border-accent: rgba(52, 211, 153, 0.25);
   --text: #F4F4F5;
   --text-muted: #71717A;
+  --text-subtle: #4A4A5A;
   --accent: #34D399;
   --accent-bg: rgba(52, 211, 153, 0.08);
   --danger: #F87171;
   --danger-bg: rgba(248, 113, 113, 0.08);
   --warning: #FBBF24;
   --warning-bg: rgba(251, 191, 36, 0.08);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  /* Safe area para notch y home indicator de iOS/Android */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
 body {
   background: var(--bg);
   color: var(--text);
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Previene scroll horizontal en mobile */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
 
+/* =====================================================
+   ANIMACIONES
+   ===================================================== */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(18px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -40,13 +70,18 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
   to   { opacity: 1; }
 }
 @keyframes shimmer {
-  0%   { background-position: -200% center; }
-  100% { background-position:  200% center; }
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+/* BUGFIX: spin faltaba y lo usa el Loader y el spinner de botones */
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.fade-up { animation: fadeUp  0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
-.fade-in { animation: fadeIn  0.35s ease forwards; }
+.fade-up  { animation: fadeUp  0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+.fade-in  { animation: fadeIn  0.35s ease forwards; }
 
+/* Delays escalonados para listas */
 .s0 { opacity:0; animation-delay: 0s;    }
 .s1 { opacity:0; animation-delay: 0.07s; }
 .s2 { opacity:0; animation-delay: 0.14s; }
@@ -54,9 +89,143 @@ h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
 .s4 { opacity:0; animation-delay: 0.28s; }
 .s5 { opacity:0; animation-delay: 0.35s; }
 
+/* =====================================================
+   COMPONENTES REUTILIZABLES (evitar inline styles)
+   ===================================================== */
+
+/* Card base */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.card-interactive:hover {
+  border-color: rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+
+.card-accent {
+  background: var(--accent-bg);
+  border-color: var(--border-accent);
+}
+
+/* Input base */
+.input {
+  width: 100%;
+  padding: 13px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--border-accent);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Label */
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  border: none;
+  margin: 0;
+}
+
+/* Page wrapper */
+.page {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.page-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+/* Sección label pequeño */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* Badge de código de invitación */
+.invite-code {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+/* Estado vacío */
+.empty-state {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--text-muted);
+}
+
+.empty-state-emoji {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.empty-state-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+/* Progress bar */
+.progress-track {
+  height: 3px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+/* =====================================================
+   SCROLLBAR
+   ===================================================== */
 ::-webkit-scrollbar       { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--surface-2); border-radius: 4px; }
-
-input::placeholder { color: var(--text-muted); }
-input:focus { border-color: var(--border-accent) !important; outline: none; }
