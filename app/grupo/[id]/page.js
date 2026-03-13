@@ -1,19 +1,4 @@
 "use client";
-// app/grupo/[id]/page.js
-// CAMBIOS DE SEGURIDAD Y UX vs. versión anterior:
-//
-// 🔴 SEGURIDAD CRÍTICA CORREGIDA:
-//    El código original usaba ?miembro=nombre como "autenticación".
-//    Cualquiera podía ir a /grupo/[id]?miembro=Juan y confirmar el plan,
-//    cancelarlo, borrar disponibilidad, o salir del grupo como si fuera Juan.
-//    FIX: Para usuarios autenticados, se verifica user.id contra miembros.user_id.
-//         Para invitados (sin cuenta), se guarda el miembro_id en sessionStorage.
-//
-// 🟡 UX MEJORADO:
-//    - Reemplazados todos los alert() con toast notifications
-//    - Agregado skeleton loading en tabs (era pantalla completa blanca)
-//    - Importados NIVELES de lib/niveles.js (ya no duplicado)
-
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
@@ -36,7 +21,8 @@ function GrupoContenido() {
 
   const [grupo, setGrupo] = useState(null);
   const [miembros, setMiembros] = useState([]);
-  const [miMiembro, setMiMiembro] = useState(null); // objeto miembro del usuario actual
+  const [miMiembro, setMiMiembro] = useState(null);
+  const [esAdmin, setEsAdmin] = useState(false);
   const [slots, setSlots] = useState([]);
   const [propuestas, setPropuestas] = useState([]);
   const [miDisponibilidad, setMiDisponibilidad] = useState([]);
@@ -51,41 +37,31 @@ function GrupoContenido() {
   const [descDraft, setDescDraft] = useState("");
   const [ubicacionDraft, setUbicacionDraft] = useState("");
   const [propuestaAConfirmar, setPropuestaAConfirmar] = useState(null);
+  const [modalInvitar, setModalInvitar] = useState(false);
+  const [amigos, setAmigos] = useState([]);
+  const [invitando, setInvitando] = useState(null);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(null);
 
-  // ─────────────────────────────────────────────────────────────────
-  // SEGURIDAD: Resolver quién es el usuario actual
-  // Para usuarios con cuenta: verificar por user_id en la tabla miembros
-  // Para invitados: usar sessionStorage para persistir el miembro_id
-  // ─────────────────────────────────────────────────────────────────
   const resolverMiMiembro = useCallback(async (miembrosData) => {
-    // Intentar con sesión activa (usuario con cuenta)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const porUserId = miembrosData.find(m => m.user_id === user.id);
-      if (porUserId) return porUserId;
+      if (porUserId) return { miembro: porUserId, user };
     }
-
-    // Invitado: buscar en sessionStorage
     const guardadoKey = `coincidimos_miembro_${id}`;
     const guardadoId = sessionStorage.getItem(guardadoKey);
     if (guardadoId) {
       const porId = miembrosData.find(m => String(m.id) === guardadoId);
-      if (porId) return porId;
+      if (porId) return { miembro: porId, user: null };
     }
-
-    // Último recurso: buscar por nombre en URL (compatibilidad con sesiones existentes)
-    // Esto mantiene compatibilidad sin romper sesiones activas,
-    // pero NO se debe usar para nuevos flujos.
     if (miNombre) {
       const porNombre = miembrosData.find(m => m.nombre === miNombre);
       if (porNombre) {
-        // Guardar en sessionStorage para la próxima vez
-        sessionStorage.setItem(guardadoKey, String(porNombre.id));
-        return porNombre;
+        sessionStorage.setItem(`coincidimos_miembro_${id}`, String(porNombre.id));
+        return { miembro: porNombre, user: null };
       }
     }
-
-    return null;
+    return { miembro: null, user: null };
   }, [id, miNombre]);
 
   const cargar = useCallback(async () => {
@@ -101,9 +77,9 @@ function GrupoContenido() {
     const miembrosData = m || [];
     setMiembros(miembrosData);
 
-    // Resolver quién soy YO (con verificación de seguridad)
-    const yoMiembro = await resolverMiMiembro(miembrosData);
+    const { miembro: yoMiembro, user } = await resolverMiMiembro(miembrosData);
     setMiMiembro(yoMiembro);
+    setEsAdmin(!!user && g.creado_por === user.id);
 
     const { data: disp } = await supabase.from("disponibilidades").select("*").eq("grupo_id", id);
     if (disp && miembrosData.length) {
@@ -148,9 +124,6 @@ function GrupoContenido() {
   if (cargando) return <Loader />;
   if (!grupo) return null;
 
-  // ─────────────────────────────────────────────────────────────────
-  // Helpers de formato
-  // ─────────────────────────────────────────────────────────────────
   const fmtFechaVisual = (fechaVisual) => {
     const d = new Date(fechaVisual + "T12:00:00");
     return d.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
@@ -179,9 +152,36 @@ function GrupoContenido() {
     return { bg: "var(--surface-2)", border: "var(--border)", text: "var(--text-muted)" };
   };
 
-  // ─────────────────────────────────────────────────────────────────
-  // Acciones (ahora usan miMiembro.id en lugar de miNombre del URL)
-  // ─────────────────────────────────────────────────────────────────
+  const abrirInvitar = async () => {
+    if (!miMiembro) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: amisConfirmadas } = await supabase
+      .from("amistades").select("*")
+      .or(`de_id.eq.${user.id},para_id.eq.${user.id}`)
+      .eq("estado", "aceptada");
+    const amigosIds = (amisConfirmadas || []).map(a => a.de_id === user.id ? a.para_id : a.de_id);
+    if (amigosIds.length === 0) { setAmigos([]); setModalInvitar(true); return; }
+    const { data: perfilesAmigos } = await supabase.from("perfiles").select("*").in("id", amigosIds);
+    const userIdsEnGrupo = new Set(miembros.map(m => m.user_id).filter(Boolean));
+    const disponibles = (perfilesAmigos || []).filter(a => !userIdsEnGrupo.has(a.id));
+    setAmigos(disponibles);
+    setModalInvitar(true);
+  };
+
+  const invitarAmigo = async (amigo) => {
+    if (invitando === amigo.id) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setInvitando(amigo.id);
+    const { data: existente } = await supabase.from("invitaciones").select("id")
+      .eq("grupo_id", id).eq("para_id", amigo.id).eq("estado", "pendiente").maybeSingle();
+    if (existente) { toast.info(`${amigo.nombre} ya tiene una invitación pendiente`); setInvitando(null); return; }
+    await supabase.from("invitaciones").insert({ grupo_id: id, de_id: user.id, para_id: amigo.id, estado: "pendiente" });
+    toast.ok(`Invitación enviada a ${amigo.nombre} ✓`);
+    setInvitando(null);
+  };
+
   const copiarLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}?codigo=${grupo.codigo}`);
     setLinkCopiado(true);
@@ -200,13 +200,21 @@ function GrupoContenido() {
     if (!miMiembro) { toast.err("No se pudo identificar tu usuario"); return; }
     await supabase.from("disponibilidades").delete().eq("miembro_id", miMiembro.id);
     await supabase.from("miembros").delete().eq("id", miMiembro.id);
-    // Limpiar sessionStorage
     sessionStorage.removeItem(`coincidimos_miembro_${id}`);
     const { data: restantes } = await supabase.from("miembros").select("id").eq("grupo_id", id);
     if (!restantes || restantes.length === 0) {
       await supabase.from("grupos").delete().eq("id", id);
     }
     router.push("/dashboard");
+  };
+
+  const eliminarMiembro = async (miembro) => {
+    if (!esAdmin || miembro.id === miMiembro?.id) return;
+    await supabase.from("disponibilidades").delete().eq("miembro_id", miembro.id);
+    await supabase.from("miembros").delete().eq("id", miembro.id);
+    toast.ok(`${miembro.nombre} eliminado del grupo`);
+    setConfirmandoEliminar(null);
+    await cargar();
   };
 
   const proponerHorario = async (fechaVisual, horaStr) => {
@@ -265,6 +273,7 @@ function GrupoContenido() {
       : `${miMiembro.nombre} confirmó el plan para ${fmt(fecha, hora)}`;
     await supabase.from("notificaciones").insert({ grupo_id: id, texto: textoNotif });
     setPropuestaAConfirmar(null);
+    setUbicacionDraft("");
     toast.ok("🎉 ¡Plan confirmado!");
     await cargar();
   };
@@ -288,6 +297,7 @@ function GrupoContenido() {
   const progreso = getProgreso(juntadas.length);
   const puedeConfirmar = todosVotaron();
   const faltanVotar = miembrosQueNoVotaron();
+  const miNombreActual = miMiembro?.nombre ?? miNombre ?? "Invitado";
 
   const tabs = [
     { id: "horarios", label: "Horarios" },
@@ -296,11 +306,6 @@ function GrupoContenido() {
     { id: "historial", label: "Historial" },
   ];
 
-  const miNombreActual = miMiembro?.nombre ?? miNombre ?? "Invitado";
-
-  // ─────────────────────────────────────────────────────────────────
-  // Render (idéntico al original, sin cambios visuales)
-  // ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ maxWidth: "480px", margin: "0 auto", padding: "24px 20px" }}>
 
@@ -346,6 +351,60 @@ function GrupoContenido() {
               <button onClick={() => setPropuestaAConfirmar(null)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
               <button onClick={confirmarPlan} style={{ flex: 1, padding: "12px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Confirmar 🎉</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal confirmar eliminar miembro */}
+      {confirmandoEliminar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "24px" }}>
+          <div className="fade-in" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", maxWidth: "360px", width: "100%" }}>
+            <p style={{ fontSize: "20px", marginBottom: "12px" }}>⚠️</p>
+            <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)", marginBottom: "8px" }}>Eliminar miembro</h2>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "24px", lineHeight: 1.6 }}>
+              Vas a eliminar a <strong style={{ color: "var(--text)" }}>{confirmandoEliminar.nombre}</strong> del grupo. Su disponibilidad también se va a borrar.
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setConfirmandoEliminar(null)} style={{ flex: 1, padding: "12px", background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={() => eliminarMiembro(confirmandoEliminar)} style={{ flex: 1, padding: "12px", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", color: "#F87171", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal invitar amigos */}
+      {modalInvitar && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "24px" }}>
+          <div className="fade-in" style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", maxWidth: "360px", width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h2 style={{ fontFamily: "Syne, sans-serif", fontSize: "18px", fontWeight: 800, color: "var(--text)" }}>Invitar amigos</h2>
+              <button onClick={() => setModalInvitar(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "18px", lineHeight: 1 }}>✕</button>
+            </div>
+            {amigos.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)" }}>
+                <p style={{ fontSize: "28px", marginBottom: "10px" }}>🤝</p>
+                <p style={{ fontSize: "14px" }}>No tenés amigos disponibles para invitar</p>
+                <p style={{ fontSize: "12px", marginTop: "6px" }}>Agregá amigos desde la sección Amigos</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {amigos.map(a => (
+                  <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "12px" }}>
+                    <div>
+                      <p style={{ fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, color: "var(--text)", marginBottom: "2px" }}>{a.nombre}</p>
+                      <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600 }}>@{a.usuario}</p>
+                    </div>
+                    <button
+                      onClick={() => invitarAmigo(a)}
+                      disabled={invitando === a.id}
+                      style={{ padding: "8px 16px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "8px", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 700, cursor: "pointer", opacity: invitando === a.id ? 0.6 : 1 }}
+                    >
+                      {invitando === a.id ? "..." : "Invitar"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -399,12 +458,23 @@ function GrupoContenido() {
 
       {/* Miembros */}
       <div className="fade-up s1 card" style={{ marginBottom: "16px" }}>
-        <p className="section-label">Miembros · {miembrosConDisp.size}/{miembros.length} listos</p>
+        <p className="section-label">
+          Miembros · {miembrosConDisp.size}/{miembros.length} listos
+          {esAdmin && <span style={{ marginLeft: "8px", fontSize: "10px", color: "var(--accent)", fontWeight: 700 }}>· ADMIN</span>}
+        </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
           {miembros.map(m => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "var(--surface-2)", borderRadius: "20px", border: `1px solid ${miembrosConDisp.has(m.id) ? "rgba(52,211,153,0.2)" : "var(--border)"}` }}>
               <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: miembrosConDisp.has(m.id) ? "#34D399" : "#71717A" }} />
               <span style={{ fontSize: "13px", color: "var(--text)", fontWeight: m.id === miMiembro?.id ? 600 : 400 }}>{m.nombre}</span>
+              {esAdmin && m.id !== miMiembro?.id && (
+                <button
+                  onClick={() => setConfirmandoEliminar(m)}
+                  style={{ marginLeft: "2px", background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px", padding: "0 2px", lineHeight: 1 }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#F87171"}
+                  onMouseLeave={e => e.currentTarget.style.color = "var(--text-muted)"}
+                >✕</button>
+              )}
             </div>
           ))}
         </div>
@@ -468,7 +538,7 @@ function GrupoContenido() {
                       </button>
                     </div>
                   </div>
-                  <button onClick={() => puedeConfirmar && abrirConfirmarPlan(p)} disabled={!puedeConfirmar}
+                  <button onClick={() => puedeConfirmar && setPropuestaAConfirmar(p)} disabled={!puedeConfirmar}
                     style={{ width: "100%", padding: "10px", background: puedeConfirmar ? "rgba(52,211,153,0.08)" : "var(--surface)", border: `1px solid ${puedeConfirmar ? "rgba(52,211,153,0.2)" : "var(--border)"}`, color: puedeConfirmar ? "#34D399" : "var(--text-muted)", borderRadius: "10px", fontSize: "13px", fontWeight: 700, cursor: puedeConfirmar ? "pointer" : "not-allowed", fontFamily: "Syne, sans-serif", opacity: puedeConfirmar ? 1 : 0.5 }}>
                     {puedeConfirmar ? "🎉 Confirmar este plan" : "🔒 Todos deben votar primero"}
                   </button>
@@ -514,6 +584,9 @@ function GrupoContenido() {
         <button onClick={() => router.push(`/actividades/${id}?miembro=${miNombreActual}`)} className="card-interactive" style={{ width: "100%", padding: "14px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
           🎯 ¿Que hacemos?
         </button>
+        <button onClick={abrirInvitar} style={{ width: "100%", padding: "14px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
+          👥 Invitar amigos
+        </button>
         <button onClick={() => router.push(`/disponibilidad/${id}?miembro=${miNombreActual}`)} style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer" }}>
           {miDisponibilidad.length > 0 ? "Editar disponibilidad" : "Agregar disponibilidad"}
         </button>
@@ -545,12 +618,6 @@ function GrupoContenido() {
       </div>
     </div>
   );
-}
-
-// Función helper faltante del render
-function abrirConfirmarPlan(p) {
-  // Esta función es local al componente, definida en el scope de GrupoContenido
-  // Se incluye aquí por completitud del refactor
 }
 
 export default function Grupo() {
