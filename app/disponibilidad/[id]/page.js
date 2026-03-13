@@ -270,7 +270,7 @@ function DisponibilidadContenido() {
         ← Volver al grupo
       </button>
 
-      <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "22px", fontWeight: 800, color: "var(--text)", marginBottom: "12px" }}>
+      <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "22px", fontWeight: 800, color: "var(--text)", marginBottom: "12px" }}>
         Tu disponibilidad
       </h1>
 
@@ -347,7 +347,7 @@ function DisponibilidadContenido() {
         <button
           onClick={guardar}
           disabled={cargando}
-          style={{ padding: "13px 28px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}
+          style={{ padding: "13px 28px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1 }}
         >
           {cargando ? "Guardando..." : "Guardar →"}
         </button>

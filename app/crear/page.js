@@ -192,7 +192,7 @@ export default function CrearGrupo() {
               color: "#0C0C0F",
               border: "none",
               borderRadius: "12px",
-              fontFamily: "Syne, sans-serif",
+              fontFamily: "'Syne', sans-serif",
               fontSize: "15px",
               fontWeight: 700,
               cursor: "pointer",
@@ -207,3 +207,4 @@ export default function CrearGrupo() {
     </main>
   );
 }
+

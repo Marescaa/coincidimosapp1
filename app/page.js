@@ -38,7 +38,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => router.push("/login")}
-            style={{ fontSize: "13px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 16px", borderRadius: "10px", cursor: "pointer", fontFamily: "Syne, sans-serif", fontWeight: 600 }}
+            style={{ fontSize: "13px", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 16px", borderRadius: "10px", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontWeight: 600 }}
             onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
           >
@@ -48,7 +48,7 @@ export default function Home() {
 
         {/* Hero */}
         <div className="fade-up s1" style={{ textAlign: "center", marginBottom: "36px" }}>
-          <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "34px", fontWeight: 800, color: "var(--text)", lineHeight: 1.15, marginBottom: "14px" }}>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "34px", fontWeight: 800, color: "var(--text)", lineHeight: 1.15, marginBottom: "14px" }}>
             Encontra el momento<br />
             <span style={{ color: "var(--accent)" }}>perfecto</span> con tus amigos
           </h1>
@@ -60,7 +60,7 @@ export default function Home() {
 
           <button
             onClick={() => router.push("/login?modo=registro")}
-            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", transition: "opacity 0.2s" }}
+            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", transition: "opacity 0.2s" }}
             onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}
           >
@@ -75,7 +75,7 @@ export default function Home() {
 
           <button
             onClick={() => setMostrarUnirse(!mostrarUnirse)}
-            style={{ width: "100%", padding: "13px", background: mostrarUnirse ? "var(--surface-2)" : "transparent", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+            style={{ width: "100%", padding: "13px", background: mostrarUnirse ? "var(--surface-2)" : "transparent", color: "var(--text)", border: "1px solid var(--border)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
           >
             Tengo un codigo de invitacion
           </button>
@@ -84,7 +84,7 @@ export default function Home() {
             <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <input type="text" placeholder="Codigo del grupo" value={codigo} onChange={e => setCodigo(e.target.value)} style={inputStyle} />
               <input type="text" placeholder="Tu nombre" value={tuNombre} onChange={e => setTuNombre(e.target.value)} style={inputStyle} />
-              <button onClick={unirseAlGrupo} disabled={cargando} style={{ width: "100%", padding: "13px", background: "rgba(52,211,153,0.08)", color: "var(--accent)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", opacity: cargando ? 0.5 : 1 }}>
+              <button onClick={unirseAlGrupo} disabled={cargando} style={{ width: "100%", padding: "13px", background: "rgba(52,211,153,0.08)", color: "var(--accent)", border: "1px solid rgba(52,211,153,0.2)", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", opacity: cargando ? 0.5 : 1 }}>
                 {cargando ? "Entrando..." : "Entrar al grupo →"}
               </button>
             </div>

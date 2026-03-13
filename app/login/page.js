@@ -85,7 +85,7 @@ function LoginContenido() {
         <div style={{ display: "flex", background: "var(--surface-2)", borderRadius: "12px", padding: "4px", marginBottom: "24px" }}>
           {["login", "registro"].map(m => (
             <button key={m} onClick={() => { setModo(m); setError(""); }}
-              style={{ flex: 1, padding: "10px", borderRadius: "9px", border: "none", cursor: "pointer", fontFamily: "Syne, sans-serif", fontSize: "13px", fontWeight: 700, transition: "all 0.2s", background: modo === m ? "var(--surface)" : "transparent", color: modo === m ? "var(--text)" : "var(--text-muted)" }}>
+              style={{ flex: 1, padding: "10px", borderRadius: "9px", border: "none", cursor: "pointer", fontFamily: "'Syne', sans-serif", fontSize: "13px", fontWeight: 700, transition: "all 0.2s", background: modo === m ? "var(--surface)" : "transparent", color: modo === m ? "var(--text)" : "var(--text-muted)" }}>
               {m === "login" ? "Iniciar sesion" : "Registrarse"}
             </button>
           ))}
@@ -120,7 +120,7 @@ function LoginContenido() {
           {error && <p style={{ fontSize: "13px", color: "#F87171", textAlign: "center" }}>{error}</p>}
 
           <button onClick={handleSubmit} disabled={cargando}
-            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1, transition: "opacity 0.2s", marginTop: "4px" }}>
+            style={{ width: "100%", padding: "14px", background: "var(--accent)", color: "#0C0C0F", border: "none", borderRadius: "12px", fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, cursor: "pointer", opacity: cargando ? 0.6 : 1, transition: "opacity 0.2s", marginTop: "4px" }}>
             {cargando ? "Cargando..." : modo === "login" ? "Entrar →" : "Crear cuenta →"}
           </button>
         </div>

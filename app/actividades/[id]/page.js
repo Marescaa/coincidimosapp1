@@ -123,7 +123,7 @@ function ActividadesContenido() {
         ← Volver al grupo
       </button>
 
-      <h1 style={{ fontFamily: "Syne, sans-serif", fontSize: "24px", fontWeight: 800, color: "var(--text)", marginBottom: "6px" }}>
+      <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "24px", fontWeight: 800, color: "var(--text)", marginBottom: "6px" }}>
         ¿Que hacemos?
       </h1>
       <p style={{ color: "var(--text-muted)", fontSize: "13px", marginBottom: "24px" }}>
@@ -156,7 +156,7 @@ function ActividadesContenido() {
             color: "#0C0C0F",
             border: "none",
             borderRadius: "12px",
-            fontFamily: "Syne, sans-serif",
+            fontFamily: "'Syne', sans-serif",
             fontWeight: 700,
             cursor: "pointer",
             fontSize: "14px",
@@ -170,7 +170,7 @@ function ActividadesContenido() {
       {sorted.length === 0 ? (
         <div style={{ textAlign: "center", padding: "48px 0", color: "var(--text-muted)" }}>
           <p style={{ fontSize: "32px", marginBottom: "12px" }}>🎯</p>
-          <p style={{ fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>
+          <p style={{ fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "6px" }}>
             Sin propuestas todavia
           </p>
           <p style={{ fontSize: "13px" }}>Se el primero en proponer algo</p>
@@ -196,7 +196,7 @@ function ActividadesContenido() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     {esGanadora && <span style={{ fontSize: "16px" }}>🏆</span>}
-                    <span style={{ fontFamily: "Syne, sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)" }}>
+                    <span style={{ fontFamily: "'Syne', sans-serif", fontSize: "15px", fontWeight: 700, color: "var(--text)" }}>
                       {act.nombre}
                     </span>
                   </div>
@@ -212,7 +212,7 @@ function ActividadesContenido() {
                       cursor: yaVote ? "default" : "pointer",
                       background: yaVote ? "var(--surface-2)" : "var(--accent)",
                       color: yaVote ? "var(--text-muted)" : "#0C0C0F",
-                      fontFamily: "Syne, sans-serif",
+                      fontFamily: "'Syne', sans-serif",
                       fontSize: "13px",
                       fontWeight: 700,
                       transition: "all 0.2s",

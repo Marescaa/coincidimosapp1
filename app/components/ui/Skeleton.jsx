@@ -87,3 +87,4 @@ function Skel({ height, width = '100%', style = {} }) {
     />
   );
 }
+

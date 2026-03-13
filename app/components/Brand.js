@@ -56,7 +56,7 @@ export default function Brand({ size = "md" }) {
 
       {/* Wordmark */}
       <span style={{
-        fontFamily: "Syne, sans-serif",
+        fontFamily: "'Syne', sans-serif",
         fontSize: s.font,
         fontWeight: 800,
         letterSpacing: "-0.025em",
